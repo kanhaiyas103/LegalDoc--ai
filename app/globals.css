@@ -1,0 +1,18 @@
+@import "../styles/globals.css";
+
+html {
+  min-height: 100%;
+  background: #09090b;
+}
+
+body {
+  min-height: 100%;
+  background:
+    linear-gradient(135deg, rgba(10, 80, 95, 0.22), transparent 36%),
+    linear-gradient(225deg, rgba(132, 72, 28, 0.16), transparent 38%),
+    #09090b;
+}
+
+::selection {
+  background: rgba(250, 204, 21, 0.32);
+}

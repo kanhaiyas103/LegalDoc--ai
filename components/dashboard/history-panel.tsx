@@ -1,0 +1,109 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { FileText, RefreshCw, Search, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+
+type DocumentRow = {
+  id: string
+  file_name: string
+  file_type: string
+  file_size: number
+  upload_date: string
+  status: string
+}
+
+type AnalysisRow = {
+  id: string
+  file_name?: string
+  tool_used: string
+  risk_score?: number
+  created_at: string
+}
+
+export function HistoryPanel() {
+  const [documents, setDocuments] = useState<DocumentRow[]>([])
+  const [analyses, setAnalyses] = useState<AnalysisRow[]>([])
+  const [query, setQuery] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  async function load(nextQuery = query) {
+    setLoading(true)
+    const [documentsResponse, analysesResponse] = await Promise.all([
+      fetch(`/api/documents${nextQuery ? `?query=${encodeURIComponent(nextQuery)}` : ""}`),
+      fetch("/api/analyses/recent"),
+    ])
+    setDocuments(documentsResponse.ok ? await documentsResponse.json() : [])
+    setAnalyses(analysesResponse.ok ? await analysesResponse.json() : [])
+    setLoading(false)
+  }
+
+  async function deleteDocument(id: string) {
+    await fetch(`/api/documents/${id}`, { method: "DELETE" })
+    await load()
+  }
+
+  useEffect(() => {
+    void load("")
+  }, [])
+
+  return (
+    <section className="grid gap-4 border-t border-white/10 py-8 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="rounded-md border border-white/10 bg-zinc-950/70 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Recent Documents</h2>
+            <p className="text-xs text-zinc-400">Stored securely in Supabase Storage and indexed for RAG.</p>
+          </div>
+          <div className="flex gap-2">
+            <label className="flex h-9 items-center gap-2 rounded-md border border-white/10 bg-black/20 px-3 text-sm text-zinc-300">
+              <Search className="size-4" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" && load(query)} className="w-36 bg-transparent outline-none placeholder:text-zinc-500" placeholder="Search" />
+            </label>
+            <Button type="button" size="icon-sm" variant="outline" className="border-white/10 bg-white/5 text-white" onClick={() => load(query)}>
+              <RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} />
+            </Button>
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          {documents.length ? (
+            documents.map((document) => (
+              <div key={document.id} className="flex items-center justify-between gap-3 rounded-md bg-white/5 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-white">{document.file_name}</div>
+                  <div className="text-xs text-zinc-400">{document.status} · {(document.file_size / 1024).toFixed(1)} KB</div>
+                </div>
+                <Button type="button" size="icon-sm" variant="outline" className="border-white/10 bg-white/5 text-white" onClick={() => deleteDocument(document.id)}>
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-md bg-white/5 p-6 text-center text-sm text-zinc-500">No documents yet.</div>
+          )}
+        </div>
+      </div>
+      <div className="rounded-md border border-white/10 bg-zinc-950/70 p-4">
+        <h2 className="text-sm font-semibold text-white">Recent Analyses</h2>
+        <p className="text-xs text-zinc-400">Risk reports and generated work products.</p>
+        <div className="mt-4 space-y-2">
+          {analyses.length ? (
+            analyses.map((analysis) => (
+              <div key={analysis.id} className="rounded-md bg-white/5 px-3 py-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-white">
+                  <FileText className="size-4 text-cyan-200" />
+                  {analysis.tool_used.replaceAll("-", " ")}
+                </div>
+                <div className="mt-1 text-xs text-zinc-400">
+                  {analysis.file_name || "Prompt-based"} {typeof analysis.risk_score === "number" ? `· Risk ${analysis.risk_score}/100` : ""}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-md bg-white/5 p-6 text-center text-sm text-zinc-500">No analyses yet.</div>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
