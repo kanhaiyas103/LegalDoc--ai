@@ -6,8 +6,8 @@ from fastapi.responses import Response
 
 from app.core.config import get_settings
 from app.core.rate_limit import rate_limit
-from app.core.security import AuthUser, get_current_user
-from app.repositories import AnalysisRepository, ChatRepository, ChunkRepository, DocumentRepository
+from app.core.security import AuthUser, get_current_user, require_admin
+from app.repositories import AdminRepository, AnalysisRepository, AuditRepository, ChatRepository, ChunkRepository, DocumentRepository
 from app.schemas import ChatRequest, ChatResponse, DocumentOut, ToolRequest, ToolResponse
 from app.services.document_processing import chunk_text, extract_text, validate_upload
 from app.services.export_service import analysis_docx, analysis_pdf
@@ -32,6 +32,15 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/admin/metrics")
+def admin_metrics(_admin: AuthUser = Depends(require_admin)) -> dict[str, object]:
+    repo = AdminRepository()
+    return {
+        "metrics": repo.metrics(),
+        "recent_audit_logs": repo.recent_audit_logs(),
+    }
+
+
 @app.get("/documents", response_model=list[DocumentOut])
 def list_documents(
     query: str | None = Query(default=None, max_length=120),
@@ -51,9 +60,6 @@ async def upload_document(file: UploadFile = File(...), user: AuthUser = Depends
     data = await validate_upload(file, max_bytes)
     text = extract_text(file.filename or "document", file.content_type or "", data)
     storage = StorageService()
-    print("TEXT LENGTH:", len(text))
-    print("FIRST 300 CHARS:")
-    print(text[:300])
     storage_path = storage.upload(user_id=user.id, file_name=file.filename or "document", content_type=file.content_type or "application/octet-stream", data=data)
     document = DocumentRepository().create(
         user_id=user.id,
@@ -73,6 +79,13 @@ async def upload_document(file: UploadFile = File(...), user: AuthUser = Depends
 
     document["signed_url"] = storage.signed_url(storage_path)
     document["status"] = "indexed" if chunks else "uploaded"
+    AuditRepository().log(
+        user_id=user.id,
+        action="document.uploaded",
+        entity_type="document",
+        entity_id=document["id"],
+        metadata={"file_type": document["file_type"], "file_size": document["file_size"], "status": document["status"]},
+    )
     return document
 
 
@@ -81,6 +94,7 @@ def delete_document(document_id: UUID, user: AuthUser = Depends(get_current_user
     deleted = DocumentRepository().soft_delete(user.id, document_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    AuditRepository().log(user_id=user.id, action="document.deleted", entity_type="document", entity_id=document_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -110,6 +124,13 @@ def run_tool(payload: ToolRequest, user: AuthUser = Depends(get_current_user)) -
         risk_score=risk_score,
     )
     citations = result.get("citations", [])
+    AuditRepository().log(
+        user_id=user.id,
+        action="analysis.created",
+        entity_type="analysis",
+        entity_id=analysis["id"],
+        metadata={"tool_used": payload.tool, "document_id": str(payload.document_id) if payload.document_id else None},
+    )
     return ToolResponse(
         output=markdown,
         result=result,
@@ -122,9 +143,52 @@ def run_tool(payload: ToolRequest, user: AuthUser = Depends(get_current_user)) -
 @app.post("/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest, user: AuthUser = Depends(get_current_user)) -> ChatResponse:
     rag = RagService()
-    chunks, retrieval_confidence = rag.retrieve(user_id=user.id, question=payload.question, document_id=payload.document_id)
-    answer = rag.openai.answer_with_context(question=payload.question, context=chunks)
     session_id = payload.session_id or ChatRepository().create_session(user_id=user.id, document_id=payload.document_id, title=payload.question)
+
+    ChatRepository().add_message(
+        session_id=session_id,
+        user_id=user.id,
+        role="user",
+        content=payload.question,
+    )
+
+    if not payload.document_id:
+        answer = rag.openai.answer_legal_question(question=payload.question)
+        raw_confidence = answer.get("confidence")
+        if isinstance(raw_confidence, str):
+            confidence = {"low": 0.35, "medium": 0.65, "high": 0.85}.get(raw_confidence.lower(), 0.65)
+        else:
+            confidence = float(raw_confidence) if isinstance(raw_confidence, (int, float)) else 0.65
+        answer_text = str(answer.get("answer", "I could not generate an answer right now."))
+        ChatRepository().add_message(
+            session_id=session_id,
+            user_id=user.id,
+            role="assistant",
+            content=answer_text,
+            citations=[],
+            confidence=confidence,
+        )
+        return ChatResponse(session_id=session_id, answer=answer_text, citations=[], confidence=confidence)
+
+    chunks, retrieval_confidence = rag.retrieve(user_id=user.id, question=payload.question, document_id=payload.document_id)
+
+    if not chunks:
+        answer_text = (
+            "I could not find indexed document context for this question yet. "
+            "Upload a PDF, DOCX, or TXT document and wait for indexing to finish, then ask again."
+        )
+        ChatRepository().add_message(
+            session_id=session_id,
+            user_id=user.id,
+            role="assistant",
+            content=answer_text,
+            citations=[],
+            confidence=0.15,
+        )
+        AuditRepository().log(user_id=user.id, action="chat.answered", entity_type="chat_session", entity_id=session_id, metadata={"mode": "document", "citations": 0})
+        return ChatResponse(session_id=session_id, answer=answer_text, citations=[], confidence=0.15)
+
+    answer = rag.openai.answer_with_context(question=payload.question, context=chunks)
     citations = [
         {
             "document_id": chunk["document_id"],
@@ -150,17 +214,17 @@ def chat(payload: ChatRequest, user: AuthUser = Depends(get_current_user)) -> Ch
     ChatRepository().add_message(
         session_id=session_id,
         user_id=user.id,
-        role="user",
-        content=payload.question,
-    )
-
-    ChatRepository().add_message(
-        session_id=session_id,
-        user_id=user.id,
         role="assistant",
         content=str(answer.get("answer", "")),
         citations=citations,
         confidence=confidence,
+    )
+    AuditRepository().log(
+        user_id=user.id,
+        action="chat.answered",
+        entity_type="chat_session",
+        entity_id=session_id,
+        metadata={"mode": "document", "citations": len(citations)},
     )
 
     return ChatResponse(

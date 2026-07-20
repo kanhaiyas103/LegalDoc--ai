@@ -25,7 +25,7 @@ export function LogoutButton() {
       onClick={logout}
       variant="outline"
       size="sm"
-      className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+      className="border-white/10 bg-white/[0.04] text-white hover:bg-white/10"
     >
       <LogOut className="size-4" />
       Logout

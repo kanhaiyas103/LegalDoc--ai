@@ -2,8 +2,9 @@ services:
   - type: web
     name: legaldoc-api
     runtime: python
-    buildCommand: pip install -r api/requirements.txt
-    startCommand: uvicorn api.index:app --host 0.0.0.0 --port $PORT
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn index:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION

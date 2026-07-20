@@ -15,7 +15,7 @@ Set `OPENAI_API_KEY`, `OPENAI_MODEL=gpt-4o`, and `OPENAI_EMBEDDING_MODEL=text-em
 
 ## Render API
 
-Create a Render Web Service from the repo and use `render.yaml`.
+Create a Render Web Service from the repo and use `render.yaml`. The service is configured with `rootDir: api`, so Render installs `api/requirements.txt` and starts `uvicorn index:app`.
 
 Required API env vars:
 
@@ -46,4 +46,14 @@ npm run build
 cd api
 python -m compileall app index.py
 uvicorn index:app --reload --port 8000
+```
+
+## Pre-Deploy Checks
+
+```bash
+npm audit
+npm run build
+cd api
+python -m compileall app index.py
+python -c "from app.main import app; print(app.title)"
 ```

@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "LegalDoc",
-  description: "AI-powered legal workbench for Indian law",
+  title: "LexisAI",
+  description: "Transform legal complexity into clear decisions",
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

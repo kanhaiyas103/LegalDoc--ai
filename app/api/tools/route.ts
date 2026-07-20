@@ -13,15 +13,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "Authentication required" }, { status: 401 })
   }
 
-  const response = await fetch(`${apiUrl}/tools`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify(payload),
-  })
+  try {
+    const response = await fetch(`${apiUrl}/tools`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload),
+    })
 
-  const data = await response.json()
-  return NextResponse.json(data, { status: response.status })
+    const text = await response.text()
+    const data = text ? JSON.parse(text) : { detail: "Backend returned an empty response" }
+    return NextResponse.json(data, { status: response.status })
+  } catch (error) {
+    return NextResponse.json(
+      { detail: error instanceof Error ? error.message : "Unable to reach the analysis API" },
+      { status: 502 },
+    )
+  }
 }

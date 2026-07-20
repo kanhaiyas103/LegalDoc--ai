@@ -185,3 +185,68 @@ class ChatRepository:
             )
             connection.execute("update public.chat_sessions set updated_at = now() where id = %s and user_id = %s", (session_id, user_id))
             connection.commit()
+
+
+class AuditRepository:
+    def log(
+        self,
+        *,
+        user_id: str,
+        action: str,
+        entity_type: str,
+        entity_id: UUID | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        with get_connection() as connection:
+            connection.execute(
+                """
+                insert into public.audit_logs (user_id, action, entity_type, entity_id, metadata)
+                values (%s, %s, %s, %s, %s::jsonb)
+                """,
+                (user_id, action, entity_type, entity_id, Jsonb(metadata or {})),
+            )
+            connection.commit()
+
+
+class AdminRepository:
+    def metrics(self) -> dict[str, Any]:
+        with get_connection() as connection:
+            row = connection.execute(
+                """
+                select
+                  (select count(*) from public.users) as users,
+                  (select count(*) from public.documents where deleted_at is null) as documents,
+                  (select count(*) from public.analyses) as analyses,
+                  (select count(*) from public.chat_sessions) as chat_sessions,
+                  (select count(*) from public.chat_messages) as chat_messages,
+                  (select count(*) from public.document_chunks) as document_chunks,
+                  (select count(*) from public.audit_logs where created_at >= now() - interval '24 hours') as audit_events_24h,
+                  (select round(avg(risk_score)::numeric, 1) from public.analyses where risk_score is not null) as average_risk_score,
+                  (select count(*) from public.analyses where risk_score >= 70) as high_risk_reports
+                """
+            ).fetchone()
+            return dict(row)
+
+    def recent_audit_logs(self, limit: int = 20) -> list[dict[str, Any]]:
+        with get_connection() as connection:
+            return [
+                dict(row)
+                for row in connection.execute(
+                    """
+                    select
+                      a.id,
+                      a.user_id,
+                      u.email,
+                      a.action,
+                      a.entity_type,
+                      a.entity_id,
+                      a.metadata,
+                      a.created_at::text
+                    from public.audit_logs a
+                    left join public.users u on u.id = a.user_id
+                    order by a.created_at desc
+                    limit %s
+                    """,
+                    (limit,),
+                ).fetchall()
+            ]

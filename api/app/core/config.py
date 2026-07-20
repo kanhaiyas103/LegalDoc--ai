@@ -5,7 +5,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
 
     app_name: str = "LegalDoc API"
     cors_origins: str = "http://localhost:3000"
@@ -16,15 +19,20 @@ class Settings(BaseSettings):
     supabase_url: str = Field(default="")
     supabase_service_role_key: str = Field(default="")
     supabase_jwks_url: str = Field(default="")
+    supabase_jwks_cache_seconds: int = 3600
     supabase_jwt_audience: str = "authenticated"
-    supabase_jwks_cache_seconds: int = 600
     supabase_storage_bucket: str = "legal-documents"
+    admin_emails: str = Field(default="")
     max_upload_mb: int = 20
     rate_limit_per_minute: int = 60
 
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def admin_email_set(self) -> set[str]:
+        return {email.strip().lower() for email in self.admin_emails.split(",") if email.strip()}
 
     @property
     def jwks_url(self) -> str:

@@ -37,13 +37,13 @@ export function ForgotPasswordForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
-          className="mt-2 h-10 w-full rounded-md border border-white/10 bg-black/20 px-3 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-300/20"
+          className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-white outline-none transition placeholder:text-[#6F7682] focus:border-[#14B87A]/60 focus:ring-2 focus:ring-[#14B87A]/20"
           placeholder="you@example.com"
         />
       </label>
-      {error ? <p className="rounded-md border border-red-400/20 bg-red-400/10 px-3 py-2 text-sm text-red-100">{error}</p> : null}
-      {message ? <p className="rounded-md border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-100">{message}</p> : null}
-      <Button disabled={loading} className="w-full bg-cyan-300 text-zinc-950 hover:bg-cyan-200">
+      {error ? <p className="rounded-lg border border-[#FF5C5C]/20 bg-[#FF5C5C]/10 px-3 py-2 text-sm text-[#FFB0B0]">{error}</p> : null}
+      {message ? <p className="rounded-lg border border-[#14B87A]/20 bg-[#14B87A]/10 px-3 py-2 text-sm text-[#7CE8B8]">{message}</p> : null}
+      <Button disabled={loading} className="h-11 w-full rounded-lg bg-[#14B87A] font-semibold text-[#07120D] hover:bg-[#19D28D]">
         {loading ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
         Send reset link
       </Button>

@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { FileText, RefreshCw, Search, Trash2 } from "lucide-react"
+import { FileSearch, FileText, RefreshCw, Search, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { EmptyState, GlassCard, SectionHeader } from "@/components/ui/premium"
 
 type DocumentRow = {
   id: string
@@ -48,19 +49,22 @@ export function HistoryPanel() {
   }, [])
 
   return (
-    <section className="grid gap-4 border-t border-white/10 py-8 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="rounded-md border border-white/10 bg-zinc-950/70 p-4">
+    <section className="grid gap-4 border-t border-white/8 py-8 lg:grid-cols-[1.1fr_0.9fr]">
+      <GlassCard tone="solid" className="p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-white">Recent Documents</h2>
-            <p className="text-xs text-zinc-400">Stored securely in Supabase Storage and indexed for RAG.</p>
-          </div>
+          <SectionHeader eyebrow="History" title="Recent Documents" description="Stored securely in Supabase Storage and indexed for RAG." />
           <div className="flex gap-2">
-            <label className="flex h-9 items-center gap-2 rounded-md border border-white/10 bg-black/20 px-3 text-sm text-zinc-300">
+            <label className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 text-sm text-[#A0A6B1] shadow-inner shadow-black/20 transition focus-within:border-[#14B87A]/35">
               <Search className="size-4" />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" && load(query)} className="w-36 bg-transparent outline-none placeholder:text-zinc-500" placeholder="Search" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && load(query)}
+                className="w-36 bg-transparent outline-none placeholder:text-[#6F7682]"
+                placeholder="Search"
+              />
             </label>
-            <Button type="button" size="icon-sm" variant="outline" className="border-white/10 bg-white/5 text-white" onClick={() => load(query)}>
+            <Button type="button" size="icon-sm" variant="outline" className="border-white/10 bg-white/[0.04] text-white" onClick={() => load(query)} title="Refresh history" aria-label="Refresh history">
               <RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} />
             </Button>
           </div>
@@ -68,42 +72,42 @@ export function HistoryPanel() {
         <div className="mt-4 space-y-2">
           {documents.length ? (
             documents.map((document) => (
-              <div key={document.id} className="flex items-center justify-between gap-3 rounded-md bg-white/5 px-3 py-2">
+              <div key={document.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3 shadow-sm shadow-black/10 transition duration-200 hover:-translate-y-0.5 hover:border-white/14 hover:bg-white/[0.055]">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium text-white">{document.file_name}</div>
-                  <div className="text-xs text-zinc-400">{document.status} · {(document.file_size / 1024).toFixed(1)} KB</div>
+                  <div className="text-xs text-[#A0A6B1]">{document.status} - {(document.file_size / 1024).toFixed(1)} KB</div>
                 </div>
-                <Button type="button" size="icon-sm" variant="outline" className="border-white/10 bg-white/5 text-white" onClick={() => deleteDocument(document.id)}>
+                <Button type="button" size="icon-sm" variant="outline" className="border-white/10 bg-white/[0.04] text-white hover:border-[#FF5C5C]/30 hover:bg-[#FF5C5C]/10 hover:text-[#FFB0B0]" onClick={() => deleteDocument(document.id)} title="Delete document" aria-label="Delete document">
                   <Trash2 className="size-4" />
                 </Button>
               </div>
             ))
           ) : (
-            <div className="rounded-md bg-white/5 p-6 text-center text-sm text-zinc-500">No documents yet.</div>
+            <EmptyState icon={<FileSearch className="size-5" />} title="No documents yet" description="Upload a PDF, DOCX, or TXT file from a workflow to start building your review history." />
           )}
         </div>
-      </div>
-      <div className="rounded-md border border-white/10 bg-zinc-950/70 p-4">
-        <h2 className="text-sm font-semibold text-white">Recent Analyses</h2>
-        <p className="text-xs text-zinc-400">Risk reports and generated work products.</p>
+      </GlassCard>
+
+      <GlassCard tone="solid" className="p-5">
+        <SectionHeader eyebrow="Reports" title="Recent Analyses" description="Risk reports and generated work products." />
         <div className="mt-4 space-y-2">
           {analyses.length ? (
             analyses.map((analysis) => (
-              <div key={analysis.id} className="rounded-md bg-white/5 px-3 py-2">
+              <div key={analysis.id} className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3 shadow-sm shadow-black/10 transition duration-200 hover:-translate-y-0.5 hover:border-white/14 hover:bg-white/[0.055]">
                 <div className="flex items-center gap-2 text-sm font-medium text-white">
-                  <FileText className="size-4 text-cyan-200" />
+                  <FileText className="size-4 text-[#14B87A]" />
                   {analysis.tool_used.replaceAll("-", " ")}
                 </div>
-                <div className="mt-1 text-xs text-zinc-400">
-                  {analysis.file_name || "Prompt-based"} {typeof analysis.risk_score === "number" ? `· Risk ${analysis.risk_score}/100` : ""}
+                <div className="mt-1 text-xs text-[#A0A6B1]">
+                  {analysis.file_name || "Prompt-based"} {typeof analysis.risk_score === "number" ? `- Risk ${analysis.risk_score}/100` : ""}
                 </div>
               </div>
             ))
           ) : (
-            <div className="rounded-md bg-white/5 p-6 text-center text-sm text-zinc-500">No analyses yet.</div>
+            <EmptyState icon={<FileText className="size-5" />} title="No analyses yet" description="Run an analysis workflow to save reports, risk scores, and exportable legal summaries." />
           )}
         </div>
-      </div>
+      </GlassCard>
     </section>
   )
 }

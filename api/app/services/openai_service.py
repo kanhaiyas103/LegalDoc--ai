@@ -87,6 +87,31 @@ class OpenAIService:
         )
         return json.loads(response.choices[0].message.content or "{}")
 
+    def answer_legal_question(self, *, question: str) -> dict[str, Any]:
+        if not self.client:
+            return {
+                "answer": "OpenAI is not configured. Add OPENAI_API_KEY to enable general Indian-law Q&A.",
+                "confidence": 0.1,
+            }
+        response = self.client.chat.completions.create(
+            model=self.settings.openai_model,
+            temperature=0.15,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are LegalDoc, an Indian-law legal information assistant. "
+                        "Answer general legal questions clearly and practically. "
+                        "Do not claim to be a lawyer, do not provide legal advice, and recommend consulting counsel for high-stakes decisions. "
+                        "Return strict JSON with answer and confidence."
+                    ),
+                },
+                {"role": "user", "content": json.dumps({"question": question})},
+            ],
+        )
+        return json.loads(response.choices[0].message.content or "{}")
+
 
 def to_markdown(tool: ToolId, result: dict[str, Any]) -> str:
     title = tool.replace("-", " ").title()

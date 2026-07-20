@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { FileUpload } from "@/components/tools/file-upload"
 import { ResultPanel } from "@/components/tools/result-panel"
+import { AnimatedContainer, GlassCard } from "@/components/ui/premium"
 import { clearStoredDocument, readStoredDocument, saveStoredDocument, StoredDocument } from "@/lib/document-store"
 import { getTool, ToolId } from "@/lib/tools"
 
@@ -42,36 +43,45 @@ export function ToolWorkbench({ toolId }: { toolId: ToolId }) {
     setLoading(true)
     setResult("")
     setAnalysisId(null)
-    const response = await fetch("/api/tools", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tool: tool.id, input: input.trim() || document?.name || "Uploaded document", prompt: prompt.trim(), documentName: document?.name, document_id: document?.id }),
-    })
-    const data = (await response.json()) as { output?: string; detail?: string; analysis_id?: string }
-    setResult(data.output || `# Request failed\n\n${data.detail || "Unable to run this tool."}`)
-    setAnalysisId(data.analysis_id || null)
-    setLoading(false)
+    try {
+      const response = await fetch("/api/tools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: tool.id, input: input.trim() || document?.name || "Uploaded document", prompt: prompt.trim(), documentName: document?.name, document_id: document?.id }),
+      })
+      const text = await response.text()
+      const data = (text ? JSON.parse(text) : {}) as { output?: string; detail?: string; analysis_id?: string }
+      setResult(data.output || `# Request failed\n\n${data.detail || "Unable to run this tool."}`)
+      setAnalysisId(data.analysis_id || null)
+    } catch (error) {
+      setResult(`# Request failed\n\n${error instanceof Error ? error.message : "Unable to run this tool."}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white">
+      <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-[#A0A6B1] transition hover:text-white">
         <ArrowLeft className="size-4" />
         Dashboard
       </Link>
-      <div className="mt-6 flex flex-col justify-between gap-5 border-b border-white/10 pb-6 md:flex-row md:items-end">
+      <AnimatedContainer className="mt-6 flex flex-col justify-between gap-5 border-b border-white/8 pb-6 md:flex-row md:items-end">
         <div>
-          <Badge variant="outline" className="border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
+          <Badge variant="outline" className="border-[#14B87A]/25 bg-[#14B87A]/10 text-[#7CE8B8]">
             {tool.category}
           </Badge>
-          <h1 className="mt-3 flex items-center gap-3 text-3xl font-semibold text-white">
-            <Icon className="size-8 text-cyan-300" />
+          <h1 className="mt-3 flex items-center gap-3 font-display text-4xl font-semibold tracking-normal text-white">
+            <Icon className="size-8 text-[#14B87A]" />
             {tool.name}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{tool.description}</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#A0A6B1]">{tool.description}</p>
         </div>
-      </div>
-      <form onSubmit={submit} className="mt-6 grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="rounded-full border border-white/8 bg-white/[0.035] px-4 py-2 text-xs font-medium text-[#A0A6B1]">
+          AI-assisted review - not legal advice
+        </div>
+      </AnimatedContainer>
+      <form onSubmit={submit} className="mt-6 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-5">
           <FileUpload
             document={document}
@@ -81,19 +91,20 @@ export function ToolWorkbench({ toolId }: { toolId: ToolId }) {
               clearStoredDocument()
             }}
           />
-          <section className="rounded-md border border-white/10 bg-zinc-950/70 p-4">
-            <h2 className="text-sm font-semibold text-white">{tool.needsDocument ? "Instructions" : "Prompt"}</h2>
+          <GlassCard className="p-5">
+            <h2 className="font-display text-lg font-semibold text-white">{tool.needsDocument ? "Review Instructions" : "Drafting Prompt"}</h2>
+            <p className="mt-1 text-sm text-[#A0A6B1]">Guide the model with commercial context, negotiation goals, or jurisdiction details.</p>
             <Textarea
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               placeholder={tool.placeholder}
-              className="mt-4 min-h-32 border-white/10 bg-black/20 text-zinc-100 placeholder:text-zinc-500"
+              className="mt-4 min-h-32 rounded-xl border-white/10 bg-black/20 text-zinc-100 placeholder:text-[#6F7682] focus-visible:ring-[#14B87A]/30"
             />
-            <Button disabled={loading || !hasRunnableInput} className="mt-4 w-full bg-cyan-300 text-zinc-950 hover:bg-cyan-200">
+            <Button disabled={loading || !hasRunnableInput} className="mt-4 h-11 w-full rounded-lg bg-[#14B87A] font-semibold text-[#07120D] hover:bg-[#19D28D]">
               {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
               {tool.action}
             </Button>
-          </section>
+          </GlassCard>
         </div>
         <ResultPanel title={tool.name} content={result} isLoading={loading} analysisId={analysisId} onClear={() => setResult("")} />
       </form>

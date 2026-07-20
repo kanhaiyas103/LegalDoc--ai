@@ -128,3 +128,12 @@ def get_current_user(
     request.state.user_id = user_id
     email = payload.get("email")
     return AuthUser(id=user_id, email=email if isinstance(email, str) else None, token=token)
+
+
+def require_admin(
+    user: AuthUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> AuthUser:
+    if not user.email or user.email.lower() not in settings.admin_email_set:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user
