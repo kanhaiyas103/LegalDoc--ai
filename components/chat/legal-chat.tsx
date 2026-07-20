@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react"
 import { BookOpenText, FileText, Loader2, Send, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfidenceMeter, EmptyState, GlassCard } from "@/components/ui/premium"
+import { backendFetch, responseJson } from "@/lib/backend-api"
 
 type DocumentRow = { id: string; file_name: string }
 type Citation = { document_id: string; chunk_index: number; page_number?: number; excerpt: string; score: number }
@@ -20,7 +21,7 @@ export function LegalChat() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch("/api/documents")
+    backendFetch("/documents")
       .then((response) => (response.ok ? response.json() : []))
       .then(setDocuments)
       .catch(() => setDocuments([]))
@@ -32,13 +33,12 @@ export function LegalChat() {
     setMessages((current) => [...current, { role: "user", content: nextQuestion }])
     setLoading(true)
     try {
-      const response = await fetch("/api/chat", {
+      const response = await backendFetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: nextQuestion, document_id: documentId || null, session_id: sessionId }),
       })
-      const text = await response.text()
-      const data = text ? JSON.parse(text) : { detail: "Empty response from chat API." }
+      const data = await responseJson(response)
       if (!response.ok) {
         setMessages((current) => [...current, { role: "assistant", content: data.detail || "Unable to answer right now." }])
         return

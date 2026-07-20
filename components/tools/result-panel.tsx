@@ -4,6 +4,7 @@ import { Download, FileType, ShieldCheck, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MarkdownView, reportSectionId } from "@/components/tools/markdown-view"
 import { ConfidenceMeter, EmptyState, GlassCard, LoadingTimeline, RiskBadge } from "@/components/ui/premium"
+import { backendFetch } from "@/lib/backend-api"
 import { downloadText } from "@/lib/downloads"
 
 type Props = {
@@ -30,9 +31,17 @@ function extractReportSections(content: string) {
 export function ResultPanel({ title, content, isLoading, analysisId, onClear }: Props) {
   const reportSections = extractReportSections(content)
 
-  function downloadReport(format: "pdf" | "docx") {
+  async function downloadReport(format: "pdf" | "docx") {
     if (!analysisId) return
-    window.location.href = `/api/reports/${analysisId}.${format}`
+    const response = await backendFetch(`/reports/${analysisId}.${format}`)
+    if (!response.ok) return
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `${title}.${format}`
+    anchor.click()
+    URL.revokeObjectURL(url)
   }
 
   return (

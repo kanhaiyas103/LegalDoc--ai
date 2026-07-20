@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { FileUpload } from "@/components/tools/file-upload"
 import { ResultPanel } from "@/components/tools/result-panel"
 import { AnimatedContainer, GlassCard } from "@/components/ui/premium"
+import { backendFetch, responseJson } from "@/lib/backend-api"
 import { clearStoredDocument, readStoredDocument, saveStoredDocument, StoredDocument } from "@/lib/document-store"
 import { getTool, ToolId } from "@/lib/tools"
 
@@ -44,13 +45,12 @@ export function ToolWorkbench({ toolId }: { toolId: ToolId }) {
     setResult("")
     setAnalysisId(null)
     try {
-      const response = await fetch("/api/tools", {
+      const response = await backendFetch("/tools", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tool: tool.id, input: input.trim() || document?.name || "Uploaded document", prompt: prompt.trim(), documentName: document?.name, document_id: document?.id }),
       })
-      const text = await response.text()
-      const data = (text ? JSON.parse(text) : {}) as { output?: string; detail?: string; analysis_id?: string }
+      const data = (await responseJson(response)) as { output?: string; detail?: string; analysis_id?: string }
       setResult(data.output || `# Request failed\n\n${data.detail || "Unable to run this tool."}`)
       setAnalysisId(data.analysis_id || null)
     } catch (error) {

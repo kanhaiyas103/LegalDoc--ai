@@ -6,6 +6,7 @@ import { FileText, FileUp, Loader2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { EmptyState, LoadingTimeline } from "@/components/ui/premium"
+import { backendFetch, responseJson } from "@/lib/backend-api"
 import { StoredDocument } from "@/lib/document-store"
 import { cn } from "@/lib/utils"
 
@@ -27,9 +28,8 @@ export function FileUpload({ document, onChange, onClear }: Props) {
     const formData = new FormData()
     formData.append("file", file)
     try {
-      const response = await fetch("/api/documents", { method: "POST", body: formData })
-      const text = await response.text()
-      const data = text ? JSON.parse(text) : {}
+      const response = await backendFetch("/documents", { method: "POST", body: formData })
+      const data = await responseJson(response)
       if (!response.ok) {
         setError(data.detail || "Upload failed")
         return

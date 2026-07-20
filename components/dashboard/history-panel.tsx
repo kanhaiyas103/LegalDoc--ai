@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { FileSearch, FileText, RefreshCw, Search, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EmptyState, GlassCard, SectionHeader } from "@/components/ui/premium"
+import { backendFetch } from "@/lib/backend-api"
 
 type DocumentRow = {
   id: string
@@ -31,8 +32,8 @@ export function HistoryPanel() {
   async function load(nextQuery = query) {
     setLoading(true)
     const [documentsResponse, analysesResponse] = await Promise.all([
-      fetch(`/api/documents${nextQuery ? `?query=${encodeURIComponent(nextQuery)}` : ""}`),
-      fetch("/api/analyses/recent"),
+      backendFetch(`/documents${nextQuery ? `?query=${encodeURIComponent(nextQuery)}` : ""}`),
+      backendFetch("/analyses/recent"),
     ])
     setDocuments(documentsResponse.ok ? await documentsResponse.json() : [])
     setAnalyses(analysesResponse.ok ? await analysesResponse.json() : [])
@@ -40,7 +41,7 @@ export function HistoryPanel() {
   }
 
   async function deleteDocument(id: string) {
-    await fetch(`/api/documents/${id}`, { method: "DELETE" })
+    await backendFetch(`/documents/${id}`, { method: "DELETE" })
     await load()
   }
 

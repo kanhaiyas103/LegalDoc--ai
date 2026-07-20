@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { BarChart3, FileText, Gauge, Scale } from "lucide-react"
 import { AnimatedContainer, MetricCard } from "@/components/ui/premium"
+import { backendFetch } from "@/lib/backend-api"
 
 type DocumentRow = {
   id: string
@@ -20,7 +21,7 @@ export function DashboardMetrics() {
   useEffect(() => {
     let mounted = true
     async function load() {
-      const [documentsResponse, analysesResponse] = await Promise.all([fetch("/api/documents"), fetch("/api/analyses/recent")])
+      const [documentsResponse, analysesResponse] = await Promise.all([backendFetch("/documents"), backendFetch("/analyses/recent")])
       if (!mounted) return
       setDocuments(documentsResponse.ok ? await documentsResponse.json() : [])
       setAnalyses(analysesResponse.ok ? await analysesResponse.json() : [])
