@@ -3,7 +3,7 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
 
 export function backendUrl(path: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://legaldoc-ai-1.onrender.com"
   return `${baseUrl.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`
 }
 
